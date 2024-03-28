@@ -1,4 +1,5 @@
 import { App, type Item, type Recipe } from '@hackclub/bag'
+import { trim } from './utils'
 
 const bagClient = async () =>
   await App.connect({
@@ -24,6 +25,26 @@ const filter = async (recipes: Recipe[], items: Item[]): Promise<Item[]> => {
   return filtered
 }
 
+const getRecipes = async () => {
+  const recipes = await bag.getRecipes({})
+  return recipes.map(recipe => ({
+    ...recipe,
+    outputs: recipe.outputs.map(output => {
+      console.log(output)
+      const slug = trim(output.recipeItem.reaction, ':')
+      return {
+        ...output,
+        recipeItem: {
+          ...output.recipeItem,
+          metadata: JSON.stringify(output.recipeItem.metadata)
+        },
+        name: output.recipeItemId,
+        image: `https://raw.githubusercontent.com/hackclub/bag-manifest/production/images/${slug}.png`
+      }
+    })
+  }))
+}
+
 declare global {
   var bag: undefined | App
   var items: undefined | Item[]
@@ -34,6 +55,6 @@ declare global {
 export const bag = globalThis.bag ?? (await bagClient())
 export const items =
   globalThis.items ?? (await bag.getItems({ query: JSON.stringify({}) }))
-export const recipes = globalThis.recipes ?? (await bag.getRecipes({}))
+export const recipes = globalThis.recipes ?? (await getRecipes())
 export const canBeCrafted =
   globalThis.canBeCrafted ?? (await filter(recipes, items))

@@ -56,6 +56,25 @@ svg {
   z-index: 9999 !important;
 }
 
+.pinwheel {
+  position: absolute;
+  width: 180px;
+  height: 180px;
+
+  @keyframes spin {
+    from {
+      transform: rotate(0);
+    }
+    to {
+      transform: rotate(180deg);
+    }
+  }
+
+  &.spin {
+    animation: spin 1s ease-out;
+  }
+}
+
 #container {
   display: flex;
   justify-content: space-between;
@@ -71,6 +90,7 @@ svg {
     img {
       background-color: var(--background);
       height: 100px;
+      user-select: none;
     }
   }
 
