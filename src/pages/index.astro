@@ -1,0 +1,595 @@
+---
+import Trash from '../components/trash.astro'
+import DarkMode from '../components/dark-mode.astro'
+import Sound from '../components/sound.astro'
+import Magic from '../components/magic.astro'
+import Time from '../components/time.astro'
+import Layout from '../layouts/Layout.astro'
+import { bag, canBeCrafted, recipes } from '../lib/bag'
+import Clear from '../components/clear.astro'
+
+const trim = (str: string, chars: string) =>
+  str.split(chars).filter(Boolean).join(chars)
+
+const starter = [
+  'Water',
+  'Coal',
+  'Rock',
+  'Iron Ore',
+  'Aluminum Ore',
+  'Sand',
+  'Clay',
+  'Raw Emerald',
+  'Raw Ruby',
+  'Gold Ore',
+  'Stick'
+].map(name => {
+  const item = canBeCrafted.find(item => item.name === name)
+  const slug = trim(item.reaction, ':')
+  return {
+    ...item,
+    quantity: 1,
+    discovered: false,
+    time: Date.now(),
+    image: `https://raw.githubusercontent.com/hackclub/bag-manifest/production/images/${slug}.png`
+  }
+})
+
+// https://raw.githubusercontent.com/hackclub/bag-manifest/production/images/-acorn.png
+const table = canBeCrafted.map(item => {
+  const slug = trim(item.reaction, ':')
+  return {
+    ...item,
+    quantity: 1,
+    discovered: false,
+    time: Date.now(),
+    image: `https://raw.githubusercontent.com/hackclub/bag-manifest/production/images/${slug}.png`
+  }
+})
+
+let current = starter
+---
+
+<Layout>
+  <div id="container">
+    <div id="left">
+      <div id="logo">
+        <h1>Infinite Craft</h1>
+        <a href="https://bag.hackclub.com" target="_blank">
+          <img src="/assets/logo.png" />
+        </a>
+      </div>
+      <div id="crafting"></div>
+      <div id="toolbar">
+        <div>
+          <button id="reset">Reset</button>
+        </div>
+        <div class="icons">
+          <button id="trash">
+            <Trash />
+          </button>
+          <button id="theme">
+            <DarkMode />
+          </button>
+          <button id="clear">
+            <Clear />
+          </button>
+          <button id="sound">
+            <Sound />
+          </button>
+        </div>
+      </div>
+    </div>
+    <div id="right">
+      <div id="menu">
+        {
+          current.map(item => (
+            <div class="item display" data-add data-value={item.name}>
+              <img src={item.image} />
+              <span>{item.name}</span>
+            </div>
+          ))
+        }
+      </div>
+      <div id="extra">
+        <div class="options">
+          <button id="discoveries">
+            <Magic />
+            <span>Discoveries</span>
+          </button>
+          <button id="sort">
+            <Time />
+            <span>Sort by time</span>
+          </button>
+        </div>
+        <div class="search">
+          <input
+            id="search"
+            type="text"
+            placeholder={`Search (${current.length}) items`}
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="nodes"></div>
+  <script is:inline define:vars={{ items: current, recipes }}>
+    const random = (min, max) =>
+      Math.floor(Math.random() * (max - min + 1) + min)
+    const distance = (a, b) => {
+      return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2))
+    }
+
+    const getNode = (n, v) => {
+      if (typeof n === 'string' || n instanceof String)
+        n = document.createElementNS('http://www.w3.org/2000/svg', n)
+      for (var p in v)
+        n.setAttributeNS(
+          null,
+          p.replace(/[A-Z]/g, function (m, p, o, s) {
+            return '-' + m.toLowerCase()
+          }),
+          v[p]
+        )
+      return n
+    }
+
+    class Node {
+      constructor(maxX) {
+        this.opacity = random(0.5, 1).toString()
+        this.node = document.createElement('div')
+        this.node.classList.add('node')
+        this.node.style.opacity = this.opacity
+        this.moving = true
+        this.initialX = random(0, maxX)
+        this.initialY = random(0, window.innerHeight)
+        this.x = this.initialX
+        this.y = this.initialY
+        this.maxX = maxX
+        this.dirX = random(-1, 1)
+        this.dirY = random(-1, 1)
+        this.goto(this.x, this.y)
+      }
+
+      goto(x, y) {
+        this.node.style.top = `${y}px`
+        this.node.style.left = `${x}px`
+        if (this.line !== undefined) {
+          // Adjust line too
+          this.line.setAttributeNS(null, 'x2', this.x + nodeSize / 2)
+          this.line.setAttributeNS(null, 'y2', this.y + nodeSize / 2)
+        }
+      }
+
+      connect(x, y, endX, endY) {
+        // Connect a line
+        const svg = getNode('svg')
+        this.line = getNode('line', {
+          x1: (x + endX) / 2,
+          y1: (y + endY) / 2,
+          x2: this.x + nodeSize / 2,
+          y2: this.y + nodeSize / 2,
+          opacity: this.opacity
+        })
+        this.dirX /= random(1.5, 2)
+        this.dirY /= random(1.5, 2)
+        svg.appendChild(this.line)
+        document.body.appendChild(svg)
+        return this.line
+      }
+
+      render() {
+        if (this.moving) {
+          this.x += this.dirX
+          this.y += this.dirY
+          this.goto(this.x, this.y)
+          if (
+            this.x < 0 ||
+            this.x > this.maxX ||
+            this.y < 0 ||
+            this.y > window.innerHeight
+          ) {
+            this.dirX = -this.dirX
+            this.dirY = -this.dirY
+          }
+          if (this.line) {
+            if (Math.abs(this.x - this.initialX) > 50) this.dirX = -this.dirX
+            if (Math.abs(this.y - this.initialY) > 50) this.dirY = -this.dirY
+          }
+        }
+      }
+    }
+
+    class Instance {
+      constructor(kind, quantity, maxX) {
+        this.nodes = []
+        this.quantity = quantity
+
+        this.items = [items.find(item => item.name === kind)]
+        this.instance = document.createElement('div')
+        this.instance.innerHTML = `
+					<img src="${this.items[0].image}"/>
+					<span>x${this.quantity} ${this.items[0].name}</span>
+				`
+        this.instance.classList.add('item')
+        this.instance.classList.add('using')
+        document.body.appendChild(this.instance)
+        this.x = Math.random() * (maxX - this.instance.offsetWidth * 2)
+        this.y =
+          Math.random() * (window.innerHeight - this.instance.offsetHeight * 2)
+        this.endX = this.x + this.instance.offsetWidth
+        this.endY = this.y + this.instance.offsetHeight
+        this.goto(this.x, this.y)
+
+        // Make instance draggable
+        this.instance.onmousedown = event => this.dragMouseDown(event, this)
+      }
+
+      dragMouseDown(event, self) {
+        event.preventDefault()
+        self.startX = event.clientX
+        self.startY = event.clientY
+        self.instance.classList.add('top')
+        document.onmouseup = () => self.closeDragElement(self)
+        document.onmousemove = event => self.elementDrag(event, self)
+      }
+
+      elementDrag(event, self) {
+        event.preventDefault()
+        self.x = self.instance.offsetLeft - (self.startX - event.clientX)
+        self.y = self.instance.offsetTop - (self.startY - event.clientY)
+        self.endX = self.x + self.instance.offsetWidth
+        self.endY = self.y + self.instance.offsetHeight
+        self.startX = event.clientX
+        self.startY = event.clientY
+        self.goto(self.x, self.y)
+      }
+
+      closeDragElement(self) {
+        document.onmouseup = null
+        document.onmousemove = null
+        self.instance.classList.remove('top')
+        state.interact(self.index)
+      }
+
+      goto(x, y) {
+        this.instance.style.top = `${y}px`
+        this.instance.style.left = `${x}px`
+        if (this.index !== undefined) state.editInstance(this.index)
+        // for (let line of this.lines) {
+        //   // Adjust line too
+        //   line.setAttributeNS(null, 'x1', (x + this.endX) / 2)
+        //   line.setAttributeNS(null, 'y1', (y + this.endY) / 2)
+        // }
+      }
+
+      collide(other) {
+        // Check if colliding with other instance
+        if (
+          this.x < other.endX &&
+          this.endX > other.x &&
+          this.y < other.endY &&
+          this.endY > other.y
+        )
+          return true
+        return false
+      }
+
+      showInteraction() {
+        this.instance.classList.add('interact')
+      }
+
+      removeInteraction() {
+        if (this.instance.classList.contains('interact'))
+          this.instance.classList.remove('interact')
+      }
+
+      interact(instance) {
+        this.items.push(...instance.items)
+        let text = []
+        for (let item of this.items) {
+          text.push(`
+            <img src="${item.image}"/>
+            <span>x${item.quantity} ${item.name}</span>
+          `)
+        }
+        this.instance.innerHTML = text.join('<span>,</span>')
+        document.body.removeChild(instance.instance)
+      }
+    }
+
+    class State {
+      constructor() {
+        this.nodes = []
+        this.instances = []
+        this.inventory = items
+        this.audio = {
+          instance: new Audio('/audio/instance.mp3'),
+          reward: new Audio('/audio/reward.mp3'),
+          delete: new Audio('/audio/delete.mp3'),
+          error: new Audio('/audio/error.mp3')
+        }
+        this.on = true
+      }
+
+      addInstance(name, maxX) {
+        const instance = new Instance(name, 1, maxX)
+        this.instances.push(instance)
+        instance.index = this.instances.length - 1
+        // Find nodes nearby and connect!
+        let nodes = this.nodes
+          .filter(node => {
+            if (node.line) return false
+            if (distance(node, instance) < 100) return false
+            return true
+          })
+          .sort((a, b) => {
+            if (distance(a, instance) > distance(b, instance)) return 1
+            return -1
+          })
+          .slice(0, random(3, 8))
+        for (let node of nodes) {
+          instance.nodes.push(node)
+          node.connect(instance.x, instance.y, instance.endX, instance.endY)
+        }
+      }
+
+      editInstance(index) {
+        const instance = this.instances[index]
+
+        // Check if overlapping with any other instances
+        for (let [i, other] of this.instances.entries()) {
+          if (i === index) continue
+          if (instance.collide(other))
+            other.showInteraction() // Simply show interaction, but don't calculate
+          else other.removeInteraction()
+        }
+
+        // Find nodes nearby and connect!
+        for (let node of instance.nodes) {
+          document.body.removeChild(node.line.parentNode)
+          node.line = undefined
+        }
+        instance.nodes = []
+
+        let nodes = this.nodes
+          .filter(node => {
+            if (node.line) return false
+            return true
+          })
+          .sort((a, b) => {
+            if (distance(a, instance) > distance(b, instance)) return 1
+            return -1
+          })
+          .slice(0, random(3, 8))
+        for (let node of nodes) {
+          instance.nodes.push(node)
+          node.connect(instance.x, instance.y, instance.endX, instance.endY)
+        }
+      }
+
+      interact(index) {
+        // Combine instances if they're overlapping!
+        const instance = this.instances[index]
+        const combine = []
+        for (let [i, other] of this.instances.entries()) {
+          if (i === index) continue
+          if (instance.collide(other)) {
+            combine.push(i)
+            other.removeInteraction()
+          }
+        }
+
+        if (!combine.length) return
+
+        // Now combine them instances
+        const instances = combine.map(i => this.instances[i].items).flat()
+        let canMake = []
+        for (let recipe of recipes) {
+          // Check to make sure all instances are in recipe
+          const ingredients = [...recipe.inputs, ...recipe.tools]
+          for (let instance of instances) {
+            if (
+              !ingredients.find(
+                ingredient => ingredient.recipeItemId === instance.name
+              )
+            )
+              continue
+          }
+          canMake.push(recipe)
+        }
+
+        console.log(canMake)
+
+        if (!canMake.length) {
+          this.play('error')
+          return
+        }
+
+        // If recipes exist, combine them
+        for (let instance of combine.slice(1)) {
+          this.instances[index].interact(this.instances[instance])
+          this.instances.splice(instance, 1) // Remove from instances
+        }
+      }
+
+      render() {
+        for (let node of this.nodes) {
+          node.render()
+        }
+      }
+
+      play(kind) {
+        if (this.on) return this.audio[kind].play()
+      }
+
+      save() {
+        // Save to localStorage
+        console.log(localStorage)
+      }
+
+      clear() {
+        // Clear the canvas!
+        for (let node of this.nodes)
+          if (node.line) {
+            document.body.removeChild(node.line.parentNode)
+            node.line = undefined
+          }
+        for (let instance of this.instances)
+          document.body.removeChild(instance.instance)
+        this.instances = []
+      }
+    }
+
+    let state = new State()
+    let maxX
+
+    const initialNodes = 128
+    const nodeSize = 5
+
+    const interactive = () => {
+      document.querySelectorAll('[data-add]').forEach(button => {
+        button.addEventListener('click', event => {
+          state.play('instance')
+          const value =
+            event.target.dataset.value ||
+            event.target.parentElement.dataset.value
+          state.addInstance(value, maxX)
+        })
+      })
+    }
+
+    const generateInventory = items => {
+      document.querySelectorAll('[data-add]').forEach(node => {
+        node.parentNode.removeChild(node)
+      })
+
+      for (let item of items) {
+        const add = document.createElement('div')
+        add.classList.add('item')
+        add.classList.add('display')
+        add.setAttribute('data-add', '')
+        add.setAttribute('data-value', item.name)
+        add.innerHTML = `
+					<img src="${item.image}"/>
+					<span>${item.name}</span>
+				`
+        document.getElementById('menu').appendChild(add)
+      }
+
+      interactive()
+    }
+
+    window.onload = () => {
+      maxX = window.innerWidth - document.getElementById('menu').offsetWidth
+
+      // Let's load some nodes
+      for (let i = 0; i < initialNodes; i++) {
+        let node = new Node(maxX)
+        state.nodes.push(node)
+        document.body.appendChild(node.node)
+      }
+
+      setInterval(() => state.render(), 50)
+
+      interactive()
+
+      document.getElementById('reset').addEventListener('click', event => {
+        const sure = confirm(
+          'Are you sure? This will delete all your progress!'
+        )
+        if (sure) {
+          localStorage.clear()
+          state.clear()
+        }
+      })
+
+      document.getElementById('theme').addEventListener('click', event => {
+        const theme = document.body.getAttribute('theme')
+        if (theme === 'dark') {
+          document.body.setAttribute('theme', 'light')
+          document.documentElement.style.setProperty('--background', 'white')
+          document.documentElement.style.setProperty('--foreground', 'black')
+          document.documentElement.style.setProperty(
+            '--button-color',
+            '#040404'
+          )
+          document.documentElement.style.setProperty('--gray', '#c8c8c8')
+          document.documentElement.style.setProperty(
+            '--instance-background',
+            'white'
+          )
+          document.documentElement.style.setProperty(
+            '--instance-bg-hover',
+            'linear-gradient(0deg, #d6fcff, #fff 90%)'
+          )
+          document.documentElement.style.setProperty(
+            '--discoveries-background',
+            '#fff9ea'
+          )
+          document.documentElement.style.setProperty('--node-stroke', '#c8c8c8')
+          document.documentElement.style.setProperty(
+            '--node-background',
+            '#e8e8e8'
+          )
+        } else {
+          document.body.setAttribute('theme', 'dark')
+          document.documentElement.style.setProperty('--background', '#000')
+          document.documentElement.style.setProperty('--foreground', 'white')
+          document.documentElement.style.setProperty(
+            '--button-color',
+            '#909090'
+          )
+          document.documentElement.style.setProperty('--gray', '#d1d1d1')
+          document.documentElement.style.setProperty(
+            '--instance-background',
+            '#000'
+          )
+          document.documentElement.style.setProperty(
+            '--instance-bg-hover',
+            'linear-gradient(180deg,#3d4249,#000 80%)'
+          )
+          document.documentElement.style.setProperty('--node-stroke', '#606060')
+          document.documentElement.style.setProperty(
+            '--node-background',
+            '#808080'
+          )
+        }
+      })
+
+      document.getElementById('clear').addEventListener('click', event => {
+        console.log('click')
+        state.clear()
+      })
+
+      document.getElementById('sound').addEventListener('click', event => {
+        if (state.on) {
+          state.on = false
+          document
+            .getElementById('sound-symbol')
+            .setAttribute('src', '/assets/mute.svg')
+        } else {
+          state.on = true
+          document
+            .getElementById('sound-symbol')
+            .setAttribute('src', '/assets/sound.svg')
+        }
+      })
+
+      document
+        .getElementById('discoveries')
+        .addEventListener('click', event => {
+          event.target.classList.add('focus')
+        })
+
+      document.getElementById('search').addEventListener('input', event => {
+        if (!event.target.value.length)
+          return generateInventory(state.inventory)
+        const results = state.inventory.filter(item =>
+          item.name.toLowerCase().startsWith(event.target.value.toLowerCase())
+        )
+        generateInventory(results)
+      })
+    }
+  </script>
+</Layout>
