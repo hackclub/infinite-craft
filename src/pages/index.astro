@@ -427,6 +427,8 @@ const session = await getSession(Astro.request)
         this.on = true
         this.theme = localStorage.getItem('theme') || 'light'
         setTheme(this.theme)
+        document.getElementById('number').innerText =
+          `${all.length - this.inventory.length} more discoveries to make!`
       }
 
       addInstance(name, maxX) {
@@ -717,8 +719,6 @@ const session = await getSession(Astro.request)
           ? sortByName(JSON.parse(localStorage.getItem('inventory')))
           : sortByName(items)
       )
-      document.getElementById('number').innerText =
-        `${all.length - state.inventory.length} more discoveries to make!`
 
       // Let's load some nodes!
       for (let i = 0; i < initialNodes; i++) {
