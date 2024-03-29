@@ -8,7 +8,9 @@ export default defineConfig({
       clientSecret: import.meta.env.SLACK_CLIENT_SECRET,
       checks: ['pkce', 'nonce'],
       redirectProxyUrl:
-        'https://cb43-71-235-174-134.ngrok-free.app/api/auth/callback/slack'
+        import.meta.env.NODE_ENV === 'development'
+          ? import.meta.env.AUTH_REDIRECT
+          : undefined
     })
   ],
   secret: import.meta.env.AUTH_SECRET,
