@@ -1,17 +1,50 @@
 ---
 import '../styles/globals.scss'
+
+const description = 'Combine shtuff to make shtuff?'
+const image =
+  'https://cloud-qh987p9v5-hack-club-bot.vercel.app/0screenshot_2024-03-29_at_1.01.35___pm.png'
 ---
 
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Infinite Craft, Hack Club style" />
+    <meta property="twitter:site" content="@hackclub" />
+    <meta property="og:title" content="Infinite Craft, Hack Club style" />
+    <meta name="twitter:title" content="Infinite Craft, Hack Club style" />
+    <meta name="description" content={description} />
+    <meta name="og:description" content={description} />
+    <meta name="twitter:description" content={description} />
+    <meta property="og:image" content={image} />
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:image" content={image} />
     <meta name="generator" content={Astro.generator} />
     <link
       rel="icon"
+      type="image/png"
+      sizes="32x32"
       href="https://assets.hackclub.com/favicons/favicon-32x32.png"
     />
-    <title>Infinite Craft</title>
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="https://assets.hackclub.com/favicons/favicon-16x16.png"
+    />
+    <link
+      rel="mask-icon"
+      href="https://assets.hackclub.com/favicons/safari-pinned-tab.svg"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="https://assets.hackclub.com/favicons/apple-touch-icon.png"
+    />
+    <title>Infinite Craft, Hack Club style</title>
   </head>
   <body>
     <slot />

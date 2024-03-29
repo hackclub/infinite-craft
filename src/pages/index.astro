@@ -6,29 +6,49 @@
 import DarkMode from '../components/dark-mode.astro'
 import Magic from '../components/magic.astro'
 import Layout from '../layouts/Layout.astro'
-import { canBeCrafted, recipes } from '../lib/bag'
+import { canBeCrafted, recipes, items } from '../lib/bag'
 import Clear from '../components/clear.astro'
 import { trim } from '../lib/utils'
 import { getSession } from 'auth-astro/server'
 
 const starter = [
-  'Bone',
-  'Water',
-  'Coal',
+  'Carrot',
+  'Wool',
+  'Lumber',
+  'Stick',
   'Rock',
-  'Iron Ore',
-  'Aluminum Ore',
-  'Sand',
-  'Clay',
+  'Apple',
+  'Orange',
+  'Banana',
+  'Log',
+  'Raw Diamond',
+  'Raw Sapphire',
   'Raw Emerald',
   'Raw Ruby',
+  'Raw Tanzanite',
+  'Mushroom',
+  'Kiwi',
+  'Coal',
+  'Iron Ore',
   'Gold Ore',
-  'Stick',
-  'Log',
-  'Wool',
-  'Lumber'
+  'Aluminum Ore',
+  'Bone',
+  'Sand',
+  'Water',
+  'Wheat',
+  'Salt',
+  'Egg',
+  'Sugarcane',
+  'Potato',
+  'Onion',
+  'Flax',
+  'Clay',
+  'Grapes',
+  'Milk',
+  'Limestone'
 ].map(name => {
   const item = canBeCrafted.find(item => item.name === name)
+  console.log(item)
   const slug = trim(item.reaction, ':')
   return {
     ...item,
@@ -87,7 +107,6 @@ const session = await getSession(Astro.request)
               xmlns="http://www.w3.org/2000/svg"
               xmlns:xlink="http://www.w3.org/1999/xlink"
               xml:space="preserve"
-              xmlns:serif="http://www.serif.com/"
               style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
               <g transform="matrix(1,0,0,1,0.20625,-2.825)">
                 <path
@@ -100,6 +119,7 @@ const session = await getSession(Astro.request)
       </div>
     </div>
     <div id="right">
+      <p id="number">[Loading] more discoveries to make!</p>
       <div id="menu"></div>
       <div id="extra">
         <div class="options">
@@ -123,7 +143,9 @@ const session = await getSession(Astro.request)
     const { signIn, signOut } = await import('auth-astro/client')
 
     document.getElementById('upload').addEventListener('click', event => {
-      signIn('slack')
+      if (document.getElementById('upload').innerText === 'Log in')
+        signIn('slack')
+      else signOut()
     })
   </script>
   <script is:inline define:vars={{ items: current, recipes, all: table }}>
@@ -533,7 +555,7 @@ const session = await getSession(Astro.request)
                   discovered: true,
                   time: Date.now()
                 })
-                generateInventory(this.inventory)
+                generateInventory(sortByName(this.inventory))
                 this.save()
 
                 // Check if all recipes have been crafted, and if so, assign the badge!
@@ -551,6 +573,9 @@ const session = await getSession(Astro.request)
                   .then(json => {
                     if (json.discovered) alert('All discoveries made!')
                   })
+
+                document.getElementById('number').innerText =
+                  `${all.length - this.inventory.length} more discoveries to make!`
               }
             }
           }
@@ -692,6 +717,8 @@ const session = await getSession(Astro.request)
           ? sortByName(JSON.parse(localStorage.getItem('inventory')))
           : sortByName(items)
       )
+      document.getElementById('number').innerText =
+        `${all.length - state.inventory.length} more discoveries to make!`
 
       // Let's load some nodes!
       for (let i = 0; i < initialNodes; i++) {
@@ -734,7 +761,6 @@ const session = await getSession(Astro.request)
             xmlns="http://www.w3.org/2000/svg"
             xmlns:xlink="http://www.w3.org/1999/xlink"
             xml:space="preserve"
-            xmlns:serif="http://www.serif.com/"
             style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
             <g transform="matrix(1,0,0,1,0.18125,-2.85)">
               <path
@@ -754,7 +780,6 @@ const session = await getSession(Astro.request)
             xmlns="http://www.w3.org/2000/svg"
             xmlns:xlink="http://www.w3.org/1999/xlink"
             xml:space="preserve"
-            xmlns:serif="http://www.serif.com/"
             style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
             <g transform="matrix(1,0,0,1,0.20625,-2.825)">
               <path
@@ -776,8 +801,6 @@ const session = await getSession(Astro.request)
             generateInventory(state.inventory)
           } else {
             showingDiscoveries = true
-            document.getElementById('menu').innerHTML =
-              '9 more discoveries to go'
             generateInventory(state.inventory.filter(item => item.discovered))
           }
         })

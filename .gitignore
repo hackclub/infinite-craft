@@ -22,3 +22,5 @@ pnpm-debug.log*
 
 test.astro
 page.scss
+.vercel
+.vscode
