@@ -15,6 +15,7 @@
   --instance-bg-hover: linear-gradient(0deg, #d6fcff, #fff 90%);
   --node-stroke: #e8e8e8;
   --node-background: #c8c8c8;
+  --remove-background: #22252b;
 }
 
 body,
@@ -42,6 +43,7 @@ svg {
   left: 0;
   width: 100vw;
   height: 100vh;
+  fill: var(--foreground);
 
   line {
     stroke: var(--node-stroke);
@@ -195,10 +197,6 @@ svg {
     justify-content: center;
     gap: 4px;
 
-    &.focus {
-      background-color: var(--discoveries-background);
-    }
-
     svg {
       fill: var(--foreground);
       position: relative;
@@ -209,16 +207,34 @@ svg {
       width: 13px;
       height: 13px;
     }
-
-    &:nth-child(1) {
-      border-right: 1px solid var(--gray);
-    }
   }
+}
+
+.focus {
+  background: var(--discoveries-background);
 }
 
 .search {
   border-top: 1px solid var(--gray);
   display: flex;
+  align-items: center;
+  padding-inline: 12px;
+
+  button {
+    background-color: transparent;
+    border: 0;
+
+    svg {
+      width: 20px;
+      height: 20px;
+    }
+  }
+
+  svg {
+    width: 20px;
+    height: 20px;
+    position: relative;
+  }
 
   input {
     background-color: transparent;
@@ -226,6 +242,7 @@ svg {
     border: 0;
     width: 100%;
     padding: 12px 18px;
+    padding-left: 6px;
     font-family: 'Roboto', sans-serif;
     outline: none;
     font-size: 16px;
@@ -250,6 +267,7 @@ svg {
   user-select: none;
   z-index: 999;
   transition: transform 0.1s linear;
+  position: relative;
 
   &.display {
     max-width: 200px;

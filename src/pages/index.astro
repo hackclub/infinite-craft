@@ -1,14 +1,17 @@
 ---
-import Trash from '../components/trash.astro'
+// TODO
+// Accomplishment badge for creating all recipes if you're logged in
+// Upload to Slack with max 10 instances every day
 import DarkMode from '../components/dark-mode.astro'
 import Magic from '../components/magic.astro'
-import Time from '../components/time.astro'
 import Layout from '../layouts/Layout.astro'
-import { bag, canBeCrafted, recipes } from '../lib/bag'
+import { canBeCrafted, recipes } from '../lib/bag'
 import Clear from '../components/clear.astro'
 import { trim } from '../lib/utils'
+import { getSession } from 'auth-astro/server'
 
 const starter = [
+  'Bone',
   'Water',
   'Coal',
   'Rock',
@@ -19,7 +22,10 @@ const starter = [
   'Raw Emerald',
   'Raw Ruby',
   'Gold Ore',
-  'Stick'
+  'Stick',
+  'Log',
+  'Wool',
+  'Lumber'
 ].map(name => {
   const item = canBeCrafted.find(item => item.name === name)
   const slug = trim(item.reaction, ':')
@@ -45,6 +51,8 @@ const table = canBeCrafted.map(item => {
 })
 
 let current = starter
+
+const session = await getSession(Astro.request)
 ---
 
 <Layout>
@@ -60,11 +68,9 @@ let current = starter
       <div id="toolbar">
         <div>
           <button id="reset">Reset</button>
+          <button id="upload">{session ? 'Log out' : 'Log in'}</button>
         </div>
         <div class="icons">
-          <button id="trash">
-            <Trash />
-          </button>
           <button id="theme">
             <DarkMode />
           </button>
@@ -85,7 +91,7 @@ let current = starter
               <g transform="matrix(1,0,0,1,0.20625,-2.825)">
                 <path
                   d="M24.156,3C23.852,3 23.551,3.063 23.25,3.156C22.645,3.348 22.066,3.707 21.563,4.219L9.813,15.969L3,15.969C1.332,15.969 -0.031,17.332 -0.031,19L-0.031,31C-0.031,32.668 1.332,34.031 3,34.031L9.813,34.031L21.531,45.688C22.648,46.809 24.082,47.301 25.25,46.75C26.426,46.195 27,44.859 27,43.313L27,6.313C27,4.813 26.234,3.566 25.063,3.156C24.77,3.055 24.461,3 24.156,3ZM24.188,5C24.289,5 24.367,5.008 24.438,5.031C24.723,5.129 25,5.383 25,6.313L25,43.313C25,44.379 24.648,44.855 24.406,44.969C24.164,45.082 23.676,45.094 22.906,44.313L10.313,31.719C10.293,31.707 10.27,31.695 10.25,31.688C10.324,31.754 10,31.121 10,30.75L10,19.25C10,18.879 10.336,18.238 10.25,18.313C10.273,18.293 10.293,18.273 10.313,18.25L22.969,5.625C23.438,5.152 23.879,5.004 24.188,5ZM3,18.031L8.188,18.031C8.059,18.414 8,18.832 8,19.25L8,30.75C8,31.168 8.063,31.582 8.188,31.969L3,31.969C2.461,31.969 2.031,31.539 2.031,31L2.031,19C2.031,18.461 2.461,18.031 3,18.031ZM31.906,18.969C31.863,18.977 31.82,18.988 31.781,19C31.406,19.066 31.105,19.34 31,19.703C30.895,20.07 31.004,20.461 31.281,20.719L35.563,25L31.281,29.281C30.883,29.68 30.883,30.32 31.281,30.719C31.68,31.117 32.32,31.117 32.719,30.719L37,26.438L41.281,30.719C41.68,31.117 42.32,31.117 42.719,30.719C43.117,30.32 43.117,29.68 42.719,29.281L38.438,25L42.719,20.719C43.043,20.418 43.129,19.941 42.934,19.547C42.742,19.148 42.309,18.93 41.875,19C41.652,19.023 41.441,19.125 41.281,19.281L37,23.563L32.719,19.281C32.512,19.059 32.211,18.945 31.906,18.969Z"
-                  style="fill-rule:nonzero;stroke-width:0.35px;"></path>
+                  style="fill-rule:nonzero;"></path>
               </g>
             </svg>
           </button>
@@ -93,25 +99,12 @@ let current = starter
       </div>
     </div>
     <div id="right">
-      <div id="menu">
-        {
-          current.map(item => (
-            <div class="item display" data-add data-value={item.name}>
-              <img src={item.image} />
-              <span>{item.name}</span>
-            </div>
-          ))
-        }
-      </div>
+      <div id="menu"></div>
       <div id="extra">
         <div class="options">
           <button id="discoveries">
             <Magic />
             <span>Discoveries</span>
-          </button>
-          <button id="sort">
-            <Time />
-            <span>Sort by time</span>
           </button>
         </div>
         <div class="search">
@@ -125,13 +118,25 @@ let current = starter
     </div>
   </div>
   <div id="nodes"></div>
+  <script>
+    const { signIn, signOut } = await import('auth-astro/client')
+
+    document.getElementById('upload').addEventListener('click', event => {
+      signIn('slack', {
+        callbackUrl:
+          'https://a1df-2601-19b-c500-e400-c040-be8a-26ae-b2ea.ngrok-free.app/api/auth/callback/slack'
+      })
+    })
+  </script>
   <script is:inline define:vars={{ items: current, recipes }}>
-    const initialNodes = 128
     const nodeSize = 5
     const pinwheelSize = 90
     const pinwheelSpin = 4
-    const random = (min, max) =>
-      Math.floor(Math.random() * (max - min + 1) + min)
+    const random = (min, max, floor = true) => {
+      let number = Math.random() * (max - min + 1) + min
+      if (floor) return Math.floor(number)
+      return number
+    }
     const distance = (a, b) =>
       Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2))
 
@@ -150,18 +155,24 @@ let current = starter
     }
 
     class Node {
-      constructor(maxX) {
-        this.opacity = random(0.5, 1).toString()
+      constructor(
+        opacity = random(0.5, 1).toString(),
+        initialX = random(0, maxX),
+        initialY = random(0, window.innerHeight),
+        x = undefined,
+        y = undefined
+      ) {
+        this.opacity = opacity
         this.moving = true
 
         this.node = document.createElement('div')
         this.node.classList.add('node')
         this.node.style.opacity = this.opacity.toString()
 
-        this.initialX = random(0, maxX)
-        this.initialY = random(0, window.innerHeight)
-        this.x = this.initialX
-        this.y = this.initialY
+        this.initialX = initialX
+        this.initialY = initialY
+        this.x = x || this.initialX
+        this.y = y || this.initialY
         this.maxX = maxX
         this.dirX = random(-1, 1)
         this.dirY = random(-1, 1)
@@ -188,10 +199,12 @@ let current = starter
           y2: this.y + nodeSize / 2,
           opacity: this.opacity
         })
-        this.dirX /= random(1.5, 2)
-        this.dirY /= random(1.5, 2)
         svg.appendChild(this.line)
         document.body.appendChild(svg)
+        this.initialX = this.x
+        this.initialY = this.y
+        this.dirX /= random(1.1, 1.5, false)
+        this.dirY /= random(1.1, 1.5, false)
         return this.line
       }
 
@@ -206,29 +219,26 @@ let current = starter
           this.x += this.dirX
           this.y += this.dirY
           this.goto(this.x, this.y)
-          if (
-            this.x < 0 ||
-            this.x > this.maxX ||
-            this.y < 0 ||
-            this.y > window.innerHeight
-          ) {
-            this.dirX = -this.dirX
-            this.dirY = -this.dirY
-          }
+          if (this.x < 0 || this.x > this.maxX) this.dirX = -this.dirX
+          if (this.y < 0 || this.y > window.innerHeight) this.dirY = -this.dirY
           if (this.line) {
-            // TODO: Better reverse direction. Perhaps individually rather then together
-            if (Math.abs(this.x - this.initialX) > 50) this.dirX = -this.dirX
-            if (Math.abs(this.y - this.initialY) > 50) this.dirY = -this.dirY
+            if (Math.abs(this.x - this.initialX) > 50) {
+              this.dirX = -this.dirX
+            }
+            if (Math.abs(this.y - this.initialY) > 50) {
+              this.dirY = -this.dirY
+            }
           }
         }
       }
     }
 
     class Instance {
-      constructor(item, index, maxX) {
-        this.nodes = []
+      constructor(items, index = undefined, nodes = [], connections = []) {
+        this.nodes = nodes
+        this.connections = connections // Connections to other nodes
         this.index = index
-        this.items = [Object.assign({}, item)]
+        this.items = structuredClone(items)
 
         this.instance = document.createElement('div')
         this.instance.classList.add('item')
@@ -236,6 +246,7 @@ let current = starter
         this.generate()
         document.body.appendChild(this.instance)
 
+        this.maxX = maxX
         this.x = Math.random() * (maxX - this.instance.offsetWidth * 2)
         this.y =
           Math.random() * (window.innerHeight - this.instance.offsetHeight * 2)
@@ -245,6 +256,29 @@ let current = starter
 
         // Make instance draggable
         this.instance.onmousedown = event => this.dragMouseDown(event, this)
+      }
+
+      connect(other) {
+        // Connect a line
+        const svg = getNode('svg')
+        const line = getNode('line', {
+          x1: (this.x + this.endX) / 2,
+          y1: (this.y + this.endY) / 2,
+          x2: (other.x + other.endX) / 2,
+          y2: (other.y + other.endY) / 2,
+          opacity: this.opacity
+        })
+        svg.appendChild(line)
+        document.body.appendChild(svg)
+        this.connections.push(line)
+        return line
+      }
+
+      disconnect() {
+        for (let line of this.connections) {
+          line.parentNode.removeChild(line)
+        }
+        this.connections = []
       }
 
       dragMouseDown(event, self) {
@@ -258,8 +292,12 @@ let current = starter
 
       elementDrag(event, self) {
         event.preventDefault()
-        self.x = self.instance.offsetLeft - (self.startX - event.clientX)
-        self.y = self.instance.offsetTop - (self.startY - event.clientY)
+        const newX = self.instance.offsetLeft - (self.startX - event.clientX)
+        const newY = self.instance.offsetTop - (self.startY - event.clientY)
+        if (newX > 0 && newX < self.maxX - self.instance.offsetWidth)
+          self.x = newX
+        if (newY > 0 && newY < window.innerHeight - self.instance.offsetHeight)
+          self.y = newY
         self.endX = self.x + self.instance.offsetWidth
         self.endY = self.y + self.instance.offsetHeight
         self.startX = event.clientX
@@ -327,6 +365,8 @@ let current = starter
           // Add
           else this.items.push(item)
         }
+        // Merge lines
+        this.connections.push(...instance.connections)
         instance.destroy()
         this.generate()
       }
@@ -365,15 +405,14 @@ let current = starter
           error: new Audio('/audio/error.mp3')
         }
         this.on = true
-        this.theme = localStorage.getItem('theme')
+        this.theme = localStorage.getItem('theme') || 'light'
+        setTheme(this.theme)
       }
 
       addInstance(name, maxX) {
-        const instance = new Instance(
-          this.inventory.find(item => item.name === name),
-          undefined,
-          maxX
-        )
+        const instance = new Instance([
+          this.inventory.find(item => item.name === name)
+        ])
         this.instances.push(instance)
         instance.index = this.instances.length - 1
         // Find nodes nearby and connect!
@@ -425,6 +464,18 @@ let current = starter
           instance.nodes.push(node)
           node.connect(instance.x, instance.y, instance.endX, instance.endY)
         }
+
+        // Find instances nearby and connect!
+        instance.disconnect()
+        let instances = this.instances
+          .filter(curr => {
+            if (distance(curr, instance) < 200) return true
+            return false
+          })
+          .slice(0, random(1, 3))
+        for (let curr of instances) {
+          instance.connect(curr)
+        }
       }
 
       interact(index) {
@@ -442,47 +493,52 @@ let current = starter
 
         if (!combine.length) return
 
+        this.play('error')
+
         // Now combine them instances
         const instances = [
           ...this.instances[index].items,
           ...combine.map(i => this.instances[i].items)
         ].flat()
         let canMake = []
-        let complete
+        let complete = []
         for (let recipe of recipes) {
           // Check to make sure all instances are in recipe
           const ingredients = [...recipe.inputs, ...recipe.tools]
           if (partial(ingredients, instances)) {
             if (exact(ingredients, instances))
               // Exact recipe, so craft, and check if it's a new discovery!
-              complete = recipe.outputs
+              complete.push(recipe.outputs)
             canMake.push(recipe)
           }
         }
 
-        if (!canMake.length) return this.play('error')
+        if (!canMake.length) return
 
         // If recipes exist, combine them
         let updated = this.instances
         for (let instance of combine) {
           this.instances[index].interact(this.instances[instance])
-          if (complete) {
-            if (complete.length === 1) {
-              this.instances[index].items = complete
+          if (complete.length) {
+            const outputs =
+              complete[Math.floor(Math.random() * complete.length)]
+            if (outputs.length === 1) {
+              this.instances[index].items = outputs
               this.instances[index].generate()
 
               // Check if it's a new discovery!
-              if (
-                !this.inventory.find(item => item.name === complete[0].name)
-              ) {
+              if (!this.inventory.find(item => item.name === outputs[0].name)) {
                 this.instances[index].animate()
                 this.inventory.push({
-                  ...complete[0],
+                  ...outputs[0],
+                  quantity: 1,
                   discovered: true,
                   time: Date.now()
                 })
                 generateInventory(this.inventory)
                 this.save()
+
+                // Check if all recipes have been crafted
               }
             }
           }
@@ -500,6 +556,17 @@ let current = starter
         if (this.on) return this.audio[kind].play()
       }
 
+      toggleTheme(theme) {
+        if (this.theme === 'dark') {
+          this.theme = 'light'
+          setTheme('light')
+        } else {
+          this.theme = 'dark'
+          setTheme('dark')
+        }
+        localStorage.setItem('theme', this.theme)
+      }
+
       save() {
         // Save to localStorage
         localStorage.setItem('inventory', JSON.stringify(this.inventory))
@@ -512,12 +579,41 @@ let current = starter
       }
     }
 
-    let state = new State(
-      localStorage.getItem('inventory')
-        ? JSON.parse(localStorage.getItem('inventory'))
-        : items
-    )
-    let maxX
+    const sortByName = items =>
+      items.sort((a, b) => a.name.localeCompare(b.name))
+
+    const setTheme = theme => {
+      const themes = {
+        light: {
+          '--background': 'white',
+          '--foreground': 'black',
+          '--button-color': '#040404',
+          '--gray': '#c8c8c8',
+          '--instance-background': 'white',
+          '--instance-bg-hover': 'linear-gradient(0deg, #d6fcff, #fff 90%)',
+          '--discoveries-background': '#fff9ea',
+          '--node-background': '#c8c8c8',
+          '--node-stroke': '#e8e8e8',
+          '--remove-background': '#22252b'
+        },
+        dark: {
+          '--background': '#000',
+          '--foreground': 'white',
+          '--button-color': '#909090',
+          '--gray': '#d1d1d1',
+          '--instance-background': '#000',
+          '--instance-bg-hover': 'linear-gradient(180deg,#3d4249,#000 80%)',
+          '--discoveries-background': '#000',
+          '--node-background': '#808080',
+          '--node-stroke': '#606060',
+          '--remove-background': '#22252b'
+        }
+      }
+      for (let [key, value] of Object.entries(themes[theme]))
+        document.documentElement.style.setProperty(key, value)
+    }
+
+    let state, maxX, initialNodes, showingDiscoveries
 
     const partial = (ingredients, instances) => {
       // Check if ingredients contains instances
@@ -563,9 +659,8 @@ let current = starter
         add.setAttribute('data-add', null)
         add.setAttribute('data-value', item.name)
         add.innerHTML = `
-      <img src="${item.image}"/>
-      <span>${item.name}</span>
-    `
+          <img src="${item.image}"/>
+          <span>${item.name}</span>`
         add.addEventListener('click', event => {
           state.play('instance')
           const value =
@@ -577,17 +672,18 @@ let current = starter
       }
     }
 
-    const setTheme = theme => {
-      for (let [key, value] of Object.entries(theme))
-        document.documentElement.style.setProperty(key, value)
-    }
-
     window.onload = () => {
+      initialNodes = window.innerHeight / 3
       maxX = window.innerWidth - document.getElementById('menu').offsetWidth
+      state = new State(
+        localStorage.getItem('inventory')
+          ? sortByName(JSON.parse(localStorage.getItem('inventory')))
+          : sortByName(items)
+      )
 
       // Let's load some nodes!
       for (let i = 0; i < initialNodes; i++) {
-        const node = new Node(maxX)
+        const node = new Node()
         state.nodes.push(node)
         document.body.appendChild(node.node)
       }
@@ -602,38 +698,12 @@ let current = starter
           localStorage.clear()
           state.clear()
           state = new State(items)
+          generateInventory(state.inventory)
         }
       })
 
       document.getElementById('theme').addEventListener('click', () => {
-        const theme = document.body.getAttribute('theme')
-        if (theme === 'dark') {
-          document.body.setAttribute('theme', 'light')
-          setTheme({
-            '--background': 'white',
-            '--foreground': 'black',
-            '--button-color': '#040404',
-            '--gray': '#c8c8c8',
-            '--instance-background': 'white',
-            '--instance-bg-hover': 'linear-gradient(0deg, #d6fcff, #fff 90%)',
-            '--discoveries-background': '#fff9ea',
-            '--node-background': '#c8c8c8',
-            '--node-stroke': '#e8e8e8'
-          })
-        } else {
-          document.body.setAttribute('theme', 'dark')
-          setTheme({
-            '--background': '#000',
-            '--foreground': 'white',
-            '--button-color': '#909090',
-            '--gray': '#d1d1d1',
-            '--instance-background': '#000',
-            '--instance-bg-hover': 'linear-gradient(180deg,#3d4249,#000 80%)',
-            '--discoveries-background': '#000',
-            '--node-background': '#808080',
-            '--node-stroke': '#606060'
-          })
-        }
+        state.toggleTheme()
       })
 
       document
@@ -643,7 +713,6 @@ let current = starter
       document.getElementById('sound').addEventListener('click', () => {
         if (state.on) {
           state.on = false
-          // TODO: Change symbol
           document.getElementById('sound').innerHTML = `
           <svg
             width="100%"
@@ -658,7 +727,7 @@ let current = starter
             <g transform="matrix(1,0,0,1,0.18125,-2.85)">
               <path
                 d="M24.156,3C23.852,3 23.551,3.063 23.25,3.156C22.645,3.348 22.066,3.707 21.563,4.219L9.813,15.969L3,15.969C1.332,15.969 -0.031,17.332 -0.031,19L-0.031,31C-0.031,32.668 1.332,34.031 3,34.031L9.813,34.031L21.531,45.688C22.648,46.809 24.082,47.301 25.25,46.75C26.426,46.195 27,44.859 27,43.313L27,6.313C27,4.813 26.234,3.566 25.063,3.156C24.77,3.055 24.461,3 24.156,3ZM24.188,5C24.289,5 24.367,5.008 24.438,5.031C24.723,5.129 25,5.383 25,6.313L25,43.313C25,44.379 24.648,44.855 24.406,44.969C24.164,45.082 23.676,45.094 22.906,44.313L10.313,31.719C10.293,31.707 10.27,31.695 10.25,31.688C10.324,31.754 10,31.121 10,30.75L10,19.25C10,18.879 10.336,18.238 10.25,18.313C10.273,18.293 10.293,18.273 10.313,18.25L22.969,5.625C23.438,5.152 23.879,5.004 24.188,5ZM34.719,12.125C34.273,12.18 33.918,12.527 33.855,12.973C33.789,13.414 34.027,13.848 34.438,14.031C38.34,16.137 41,20.246 41,25C41,29.738 38.352,33.859 34.469,35.969C33.984,36.234 33.809,36.844 34.078,37.328C34.344,37.813 34.953,37.988 35.438,37.719C39.945,35.27 43,30.484 43,25C43,19.5 39.938,14.695 35.406,12.25C35.227,12.148 35.02,12.105 34.813,12.125L34.719,12.125ZM3,18.031L8.188,18.031C8.059,18.414 8,18.832 8,19.25L8,30.75C8,31.168 8.063,31.582 8.188,31.969L3,31.969C2.461,31.969 2.031,31.539 2.031,31L2.031,19C2.031,18.461 2.461,18.031 3,18.031ZM30.531,18.406C30.047,18.465 29.68,18.863 29.656,19.352C29.633,19.836 29.961,20.27 30.438,20.375C32.484,20.91 34,22.777 34,25C34,27.223 32.484,29.09 30.438,29.625C29.902,29.762 29.582,30.309 29.719,30.844C29.855,31.379 30.402,31.699 30.938,31.563C33.848,30.801 36,28.137 36,25C36,21.863 33.848,19.199 30.938,18.438C30.805,18.398 30.668,18.391 30.531,18.406Z"
-                style="fill-rule:nonzero;stroke:black;stroke-width:0.3px;"></path>
+                style="fill-rule:nonzero;"></path>
             </g>
           </svg>
           `
@@ -678,7 +747,7 @@ let current = starter
             <g transform="matrix(1,0,0,1,0.20625,-2.825)">
               <path
                 d="M24.156,3C23.852,3 23.551,3.063 23.25,3.156C22.645,3.348 22.066,3.707 21.563,4.219L9.813,15.969L3,15.969C1.332,15.969 -0.031,17.332 -0.031,19L-0.031,31C-0.031,32.668 1.332,34.031 3,34.031L9.813,34.031L21.531,45.688C22.648,46.809 24.082,47.301 25.25,46.75C26.426,46.195 27,44.859 27,43.313L27,6.313C27,4.813 26.234,3.566 25.063,3.156C24.77,3.055 24.461,3 24.156,3ZM24.188,5C24.289,5 24.367,5.008 24.438,5.031C24.723,5.129 25,5.383 25,6.313L25,43.313C25,44.379 24.648,44.855 24.406,44.969C24.164,45.082 23.676,45.094 22.906,44.313L10.313,31.719C10.293,31.707 10.27,31.695 10.25,31.688C10.324,31.754 10,31.121 10,30.75L10,19.25C10,18.879 10.336,18.238 10.25,18.313C10.273,18.293 10.293,18.273 10.313,18.25L22.969,5.625C23.438,5.152 23.879,5.004 24.188,5ZM3,18.031L8.188,18.031C8.059,18.414 8,18.832 8,19.25L8,30.75C8,31.168 8.063,31.582 8.188,31.969L3,31.969C2.461,31.969 2.031,31.539 2.031,31L2.031,19C2.031,18.461 2.461,18.031 3,18.031ZM31.906,18.969C31.863,18.977 31.82,18.988 31.781,19C31.406,19.066 31.105,19.34 31,19.703C30.895,20.07 31.004,20.461 31.281,20.719L35.563,25L31.281,29.281C30.883,29.68 30.883,30.32 31.281,30.719C31.68,31.117 32.32,31.117 32.719,30.719L37,26.438L41.281,30.719C41.68,31.117 42.32,31.117 42.719,30.719C43.117,30.32 43.117,29.68 42.719,29.281L38.438,25L42.719,20.719C43.043,20.418 43.129,19.941 42.934,19.547C42.742,19.148 42.309,18.93 41.875,19C41.652,19.023 41.441,19.125 41.281,19.281L37,23.563L32.719,19.281C32.512,19.059 32.211,18.945 31.906,18.969Z"
-                style="fill-rule:nonzero;stroke-width:0.35px;"></path>
+                style="fill-rule:nonzero;"></path>
             </g>
           </svg>
           `
@@ -687,7 +756,17 @@ let current = starter
 
       document
         .getElementById('discoveries')
-        .addEventListener('click', event => event.target.classList.add('focus'))
+        .addEventListener('click', event => {
+          document.getElementById('discoveries').classList.add('focus')
+          // Show discoveries
+          if (showingDiscoveries) {
+            showingDiscoveries = false
+            generateInventory(state.inventory)
+          } else {
+            showingDiscoveries = true
+            generateInventory(state.inventory.filter(item => item.discovered))
+          }
+        })
 
       document.getElementById('search').addEventListener('input', event => {
         if (!event.target.value.length)
@@ -696,6 +775,10 @@ let current = starter
           item.name.toLowerCase().startsWith(event.target.value.toLowerCase())
         )
         generateInventory(results)
+      })
+
+      document.getElementById('clear').addEventListener('click', event => {
+        document.getElementById('search')
       })
     }
   </script>
