@@ -1,7 +1,8 @@
 ---
-// TODO
-// Accomplishment badge for creating all recipes if you're logged in
+// Extend:
 // Upload to Slack with max 10 instances every day
+// Actually get connections between nodes working
+// Hints for recipes
 import DarkMode from '../components/dark-mode.astro'
 import Magic from '../components/magic.astro'
 import Layout from '../layouts/Layout.astro'
@@ -122,13 +123,10 @@ const session = await getSession(Astro.request)
     const { signIn, signOut } = await import('auth-astro/client')
 
     document.getElementById('upload').addEventListener('click', event => {
-      signIn('slack', {
-        callbackUrl:
-          'https://a1df-2601-19b-c500-e400-c040-be8a-26ae-b2ea.ngrok-free.app/api/auth/callback/slack'
-      })
+      signIn('slack')
     })
   </script>
-  <script is:inline define:vars={{ items: current, recipes }}>
+  <script is:inline define:vars={{ items: current, recipes, all: table }}>
     const nodeSize = 5
     const pinwheelSize = 90
     const pinwheelSpin = 4
@@ -466,16 +464,16 @@ const session = await getSession(Astro.request)
         }
 
         // Find instances nearby and connect!
-        instance.disconnect()
-        let instances = this.instances
-          .filter(curr => {
-            if (distance(curr, instance) < 200) return true
-            return false
-          })
-          .slice(0, random(1, 3))
-        for (let curr of instances) {
-          instance.connect(curr)
-        }
+        // instance.disconnect()
+        // let instances = this.instances
+        //   .filter(curr => {
+        //     if (distance(curr, instance) < 200) return true
+        //     return false
+        //   })
+        //   .slice(0, random(1, 3))
+        // for (let curr of instances) {
+        //   instance.connect(curr)
+        // }
       }
 
       interact(index) {
@@ -538,7 +536,21 @@ const session = await getSession(Astro.request)
                 generateInventory(this.inventory)
                 this.save()
 
-                // Check if all recipes have been crafted
+                // Check if all recipes have been crafted, and if so, assign the badge!
+                fetch(`/badge`, {
+                  method: 'POST',
+                  headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    outputs
+                  })
+                })
+                  .then(res => res.json())
+                  .then(json => {
+                    if (json.discovered) alert('All discoveries made!')
+                  })
               }
             }
           }
@@ -698,7 +710,7 @@ const session = await getSession(Astro.request)
           localStorage.clear()
           state.clear()
           state = new State(items)
-          generateInventory(state.inventory)
+          generateInventory(sortByName(state.inventory))
         }
       })
 
@@ -764,6 +776,8 @@ const session = await getSession(Astro.request)
             generateInventory(state.inventory)
           } else {
             showingDiscoveries = true
+            document.getElementById('menu').innerHTML =
+              '9 more discoveries to go'
             generateInventory(state.inventory.filter(item => item.discovered))
           }
         })
