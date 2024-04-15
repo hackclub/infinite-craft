@@ -45,7 +45,8 @@ const starter = [
   'Clay',
   'Grapes',
   'Milk',
-  'Limestone'
+  'Limestone',
+  'Bowl'
 ].map(name => {
   const item = canBeCrafted.find(item => item.name === name)
   console.log(item)
@@ -254,7 +255,14 @@ const session = await getSession(Astro.request)
     }
 
     class Instance {
-      constructor(items, index = undefined, nodes = [], connections = []) {
+      constructor(
+        items,
+        x,
+        y,
+        index = undefined,
+        nodes = [],
+        connections = []
+      ) {
         this.nodes = nodes
         this.connections = connections // Connections to other nodes
         this.index = index
@@ -267,8 +275,10 @@ const session = await getSession(Astro.request)
         document.body.appendChild(this.instance)
 
         this.maxX = maxX
-        this.x = Math.random() * (maxX - this.instance.offsetWidth * 2)
+        console.log(this.maxX)
+        this.x = x || Math.random() * (maxX - this.instance.offsetWidth * 2)
         this.y =
+          y ||
           Math.random() * (window.innerHeight - this.instance.offsetHeight * 2)
         this.endX = this.x + this.instance.offsetWidth
         this.endY = this.y + this.instance.offsetHeight
@@ -431,10 +441,12 @@ const session = await getSession(Astro.request)
           `${all.length - this.inventory.length} more discoveries to make!`
       }
 
-      addInstance(name, maxX) {
-        const instance = new Instance([
-          this.inventory.find(item => item.name === name)
-        ])
+      addInstance(name, x, y) {
+        const instance = new Instance(
+          [this.inventory.find(item => item.name === name)],
+          x ? x : undefined,
+          y ? y : undefined
+        )
         this.instances.push(instance)
         instance.index = this.instances.length - 1
         // Find nodes nearby and connect!
@@ -453,6 +465,7 @@ const session = await getSession(Astro.request)
           instance.nodes.push(node)
           node.connect(instance.x, instance.y, instance.endX, instance.endY)
         }
+        return instance
       }
 
       editInstance(index) {
@@ -578,6 +591,57 @@ const session = await getSession(Astro.request)
 
                 document.getElementById('number').innerText =
                   `${all.length - this.inventory.length} more discoveries to make!`
+              }
+            } else {
+              // Deal with multiple outputs
+              const discovered = []
+
+              // Check if it's a new discovery!
+              for (let output of outputs) {
+                if (!this.inventory.find(item => item.name === output.name)) {
+                  discovered.push(output.name)
+                  this.inventory.push({
+                    ...output,
+                    quantity: 1,
+                    discovered: true,
+                    time: Date.now()
+                  })
+                }
+              }
+
+              // Check if all recipes have been crafted, and if so, assign the badge!
+              fetch('/badge', {
+                method: 'POST',
+                headers: {
+                  'Accept': 'application/json',
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  outputs
+                })
+              })
+                .then(res => res.json())
+                .then(json => {
+                  if (json.discovered) alert('All discoveries made!')
+                })
+              generateInventory(sortByName(this.inventory))
+              this.save()
+              document.getElementById('number').innerText =
+                `${all.length - this.inventory.length} more discoveries to make!`
+
+              this.instances[index].items = [outputs[0]]
+              this.instances[index].generate()
+
+              const og = this.instances[index]
+              console.log(discovered)
+
+              // Create new instances for the other inputs
+              for (let other of outputs.slice(1)) {
+                const instance = this.addInstance(other.name, og.x, og.y)
+                if (discovered.find(name => name === other.name)) {
+                  // New discovery, so animate!
+                  instance.animate()
+                }
               }
             }
           }
@@ -705,7 +769,7 @@ const session = await getSession(Astro.request)
           const value =
             event.target.dataset.value ||
             event.target.parentElement.dataset.value
-          state.addInstance(value, maxX)
+          state.addInstance(value)
         })
         document.getElementById('menu').appendChild(add)
       }
